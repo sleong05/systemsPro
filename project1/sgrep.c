@@ -77,4 +77,28 @@ int main(int argc, char *argv[])
 	printf("count: %s\n", count ? "true" : "false");
 	printf("line_number: %s\n", max_count ? "true" : "false");
 	printf("quite: \"%s\"\n", quite ? "true" : "false");
+
+	file* FILE;
+
+	fh = open(argv, "r");
+
+	if (fh == NULL) {
+		printf("Please input a file \n");
+        ret 1;
+    }
+
+	char* line;
+	size_t bufferLength = 0;
+	size_t lineLength = 0;
+
+	// file reading loop
+	while (1) {
+		lineLength = getLine(&line, &bufferLength, FILE);
+
+		if (lineLength == -1) {
+			break;
+		}
+	}
+
+
 }
