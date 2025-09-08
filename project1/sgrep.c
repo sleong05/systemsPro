@@ -4,6 +4,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <string.h>
+#include "circArray.h"
 
 #define USAGE                                               \
 	"Usage: grep_stub [-m] [-h] [-i] PATTERN FILE\n"        \
@@ -40,6 +41,9 @@ int main(int argc, char *argv[])
 	bool reverseCount = false;
 	bool lineNumber = false;
 	bool quite = false;
+	bool context = false;
+
+	int contextLines = 0;
 
 	while (1)
 	{
@@ -66,10 +70,11 @@ int main(int argc, char *argv[])
 			quite = true;
 			break;
 		case 'B':
-			/* TODO*/
+			context = true;
+			contextLines = atoi(optarg);
+			break;
 		}
 	}
-
 	nargs = argc - optind;
 	if (nargs != 2)
 	{
@@ -78,9 +83,13 @@ int main(int argc, char *argv[])
 		// mu_die("expected two positional arguments, but found %d", nargs);
 	}
 
+	// general needed info
 	char *fileName = argv[optind + 1];
 	char *target = argv[optind];
 	bool exitStatus = 1;
+	char *line;
+	size_t bufferLength = 0;
+	size_t lineLength = 0;
 
 	// path to filename in directory
 	char path[100];
@@ -95,14 +104,11 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	char *line;
-	size_t bufferLength = 0;
-	size_t lineLength = 0;
-
 	// flag specific data
 	int matchedLines = 0;
 	int matchedReversedLines = 0;
 	int lineCount = 0;
+	circArray circArr = createCircArray(contextLines);
 
 	// file reading loop
 	while (1)
@@ -117,8 +123,8 @@ int main(int argc, char *argv[])
 		char *p = strstr(line, target);
 		if (p)
 		{
-			if (quite)
-				return 1;
+			if (quite) return 1;
+			if (context && (!count && !reverseCount)) printLastLines(&circArr, lineNumber, lineCount);
 			matchedLines++;
 			if (!count && !reverseCount)
 			{
@@ -131,6 +137,7 @@ int main(int argc, char *argv[])
 		{
 			matchedReversedLines++;
 		}
+		if (context) insert(&circArr, line);
 	}
 
 	if (count)
@@ -139,6 +146,7 @@ int main(int argc, char *argv[])
 		printf("%d\n", matchedReversedLines);
 
 	fclose(fh);
+	deleteCircArray(&circArr);
 
 	return exitStatus;
 }

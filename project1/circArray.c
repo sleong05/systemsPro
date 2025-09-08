@@ -1,10 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
-typedef struct {
-    char **array;
-    int index;
-    int size;
-} circArray;
+#include "circArray.h"
+#include <string.h>
+#include <stdbool.h>
 
 circArray createCircArray(int size){
     char **linesArray = calloc(size, sizeof(char *));
@@ -18,24 +16,29 @@ void insert(circArray *arr, char *line) {
     if (arr->array[index]) {
         free(arr->array[index]);
     }
-    arr->array[index] = line;
+    arr->array[index] = strdup(line);
     arr->index = (arr->index+1)%arr->size;
 }
 
-void printLastLines(circArray *arr) {
+void printLastLines(circArray *arr, bool lineNumber, int curLine) {
     int index = arr->index;
-
+    int lineNum = curLine - arr->size -1;
     // print from the current index till the end of arr
     for (int i = index; i < arr->size;i++) {
-        if (arr->array[i])
-            printf("%s\n", arr->array[i]);
-
+        lineNum++;
+        if (arr->array[i]) {
+            printf("%d:", lineNum);
+            printf("%s", arr->array[i]);
+        }
     }
 
     // print from the start of array till the index
     for (int i = 0; i < index;i++) {
-        if (arr->array[i])
-            printf("%s\n", arr->array[i]);
+        lineNum++;
+        if (arr->array[i]) {
+            printf("%d:", lineNum);
+            printf("%s", arr->array[i]);
+        }
     }
 }
 
