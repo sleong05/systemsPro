@@ -41,9 +41,6 @@ int main(int argc, char *argv[])
 	bool lineNumber = false;
 	bool quite = false;
 
-	int max_count = -1;
-	int ret = 0;
-
 	while (1)
 	{
 		int opt = getopt_long(argc, argv, short_opts, long_opts, NULL);
