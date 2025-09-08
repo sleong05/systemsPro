@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define USAGE                                               \
 	"Usage: grep_stub [-m] [-h] [-i] PATTERN FILE\n"        \
@@ -21,10 +23,11 @@
 int main(int argc, char *argv[])
 {
 	int opt, nargs;
-	const char *short_opts = ":chnqB:";
+	const char *short_opts = ":cvhnqB:";
 
 	struct option long_opts[] = {
 		{"count", no_argument, NULL, 'c'},
+		{"reverse-count", no_argument, NULL, 'v'},
 		{"help", no_argument, NULL, 'h'},
 		{"line-number", no_argument, NULL, 'n'},
 		{"quite", no_argument, NULL, 'q'},
@@ -34,7 +37,8 @@ int main(int argc, char *argv[])
 	// flags
 	bool ignore_case = false;
 	bool count = false;
-	bool line_number = false;
+	bool reverseCount = false;
+	bool lineNumber = false;
 	bool quite = false;
 
 	int max_count = -1;
@@ -52,11 +56,14 @@ int main(int argc, char *argv[])
 		case 'c':
 			count = true;
 			break;
+		case 'v':
+			reverseCount = true;
+			break;
 		case 'h':
 			printf(USAGE);
 			return 0;
 		case 'n':
-			line_number = true;
+			lineNumber = true;
 			break;
 		case 'q':
 			quite = true;
@@ -67,38 +74,74 @@ int main(int argc, char *argv[])
 	}
 
 	nargs = argc - optind;
-	if (nargs != 1)
+	if (nargs != 2)
 	{
 		printf("Invalid Input. Run -h to see usage \n");
 		return 1;
 		// mu_die("expected two positional arguments, but found %d", nargs);
 	}
 
-	printf("count: %s\n", count ? "true" : "false");
-	printf("line_number: %s\n", max_count ? "true" : "false");
-	printf("quite: \"%s\"\n", quite ? "true" : "false");
+	char *fileName = argv[optind + 1];
+	char *target = argv[optind];
+	bool exitStatus = 1;
 
-	file* FILE;
+	// path to filename in directory
+	char path[100];
+	strcpy(path, "./");
+	strcat(path, fileName);
+	FILE *fh;
+	fh = fopen(path, "r");
 
-	fh = open(argv, "r");
-
-	if (fh == NULL) {
+	if (fh == NULL)
+	{
 		printf("Please input a file \n");
-        ret 1;
-    }
+		return 1;
+	}
 
-	char* line;
+	char *line;
 	size_t bufferLength = 0;
 	size_t lineLength = 0;
 
-	// file reading loop
-	while (1) {
-		lineLength = getLine(&line, &bufferLength, FILE);
+	// flag specific data
+	int matchedLines = 0;
+	int matchedReversedLines = 0;
+	int lineCount = 0;
 
-		if (lineLength == -1) {
+	// file reading loop
+	while (1)
+	{
+		lineLength = getline(&line, &bufferLength, fh);
+		lineCount++;
+		if (lineLength == -1)
+		{
 			break;
+		}
+
+		char *p = strstr(line, target);
+		if (p)
+		{
+			if (quite)
+				return 1;
+			matchedLines++;
+			if (!count && !reverseCount)
+			{
+				if (lineNumber)
+					printf("%d:", lineCount);
+				printf("%s", line);
+			}
+		}
+		else
+		{
+			matchedReversedLines++;
 		}
 	}
 
+	if (count)
+		printf("%d\n", matchedLines);
+	if (reverseCount)
+		printf("%d\n", matchedReversedLines);
 
+	fclose(fh);
+
+	return exitStatus;
 }
