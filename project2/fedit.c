@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     bool value = false;
     bool skip = false;
 
-    int flag_arg = 0;
+    char expansionChar = 'A';
     int opArg;
     // parsing args
     while (1)
@@ -94,7 +94,6 @@ int main(int argc, char *argv[])
             mainArg = atoi(optarg);
             break;
         case 'x':
-            printf("expand");
             operation = expand;
             mainArg = atoi(optarg);
             break;
@@ -107,8 +106,7 @@ int main(int argc, char *argv[])
             mainArg = atoi(optarg);
             break;
         case 'v':
-            value = true;
-            opArg = atoi(optarg);
+            expansionChar = optarg[0];
             break;
         case 's':
             skip = true;
@@ -175,7 +173,7 @@ int main(int argc, char *argv[])
         }
 
         char buf[mainArg];
-        memset(buf, 'A', mainArg);
+        memset(buf, expansionChar, mainArg);
 
         write(fd, buf, mainArg);
 
