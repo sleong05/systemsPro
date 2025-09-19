@@ -43,6 +43,7 @@
 
 enum action
 {
+    NOACTION,
     rLeft,
     rRight,
     keep,
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
         {NULL, 0, NULL, 0}};
 
     // flags
-    enum action operation;
+    enum action operation = NOACTION;
     int mainArg;
 
     char expansionChar = 'A';
@@ -81,7 +82,18 @@ int main(int argc, char *argv[])
         opt = getopt_long(argc, argv, short_opts, long_opts, NULL);
         if (opt == -1)
             break;
-
+        // ensure one main op is selected
+        if (operation != NOACTION) {
+            switch (opt) {
+                case 'l':
+                case 'r':
+                case 'x':
+                case 'c':
+                case 'k':
+                    fprintf(stderr, "Only one main flag may be selected\n");
+                    return 1;
+            }
+        }
         switch (opt)
         {
         case 'h':
@@ -155,31 +167,17 @@ int main(int argc, char *argv[])
     case expand:
     {
         dsize = size + mainArg;
-        if (truncate(path, dsize) == -1)
-        {
-            perror("truncate error");
-            return 1;
-        }
+        truncate(path, dsize);
 
         int fd = open(path, O_RDWR);
-        if (fd == -1)
-        {
-            perror("failed to open file");
-            return 1;
-        }
+        char *buf = malloc(mainArg);
 
-        if (lseek(fd, size, SEEK_SET) == (off_t)-1)
-        {
-            perror("lseek");
-            close(fd);
-            return -1;
-        }
-
-        char buf[mainArg];
+        lseek(fd, size, SEEK_SET);
         memset(buf, expansionChar, mainArg);
 
         write(fd, buf, mainArg);
 
+        free(buf);
         close(fd);
         break;
     }
