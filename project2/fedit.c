@@ -9,6 +9,8 @@
 #include <fcntl.h>
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #define USAGE                                                                                                                                                       \
     "Usage: fedit [-l] [-r] [-x] [-c] [-k] FILE\n"                                                                                                                  \
     "\n"                                                                                                                                                            \
@@ -48,8 +50,8 @@ enum action
     contract
 };
 
-int rotate_left(char *path, int n, int size);
-
+static void rotate_left(char *path, int n, int size);
+static void keepBytes(char *path, int start, int bytesToKeep, int size);
 int main(int argc, char *argv[])
 {
     int opt, nargs;
@@ -68,11 +70,9 @@ int main(int argc, char *argv[])
     // flags
     enum action operation;
     int mainArg;
-    bool value = false;
-    bool skip = false;
 
     char expansionChar = 'A';
-    int opArg;
+    int offSet = 0;
     // parsing args
     while (1)
     {
@@ -109,8 +109,7 @@ int main(int argc, char *argv[])
             expansionChar = optarg[0];
             break;
         case 's':
-            skip = true;
-            opArg = atoi(optarg);
+            offSet = atoi(optarg);
             break;
         case '?': /* ... unknown option */
         case ':': /* ... option missing required argument */
@@ -148,6 +147,7 @@ int main(int argc, char *argv[])
     case rRight:
         break;
     case keep:
+        keepBytes(path, offSet, mainArg, size);
         break;
     case expand:
     {
@@ -191,7 +191,25 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int rotate_left(char *path, int n, int size)
+static void keepBytes(char *path, int start, int bytesToKeep, int size) {
+    if (start >= size) return;
+
+    int fd = open(path, O_RDWR);
+
+    int end = MIN(bytesToKeep+ start, size);
+
+    int length = end - start;
+    char *textSegment = malloc(length);
+    pread(fd, textSegment, length, start );
+
+    write(fd, textSegment, length);
+    ftruncate(fd, length);
+
+    close(fd);
+    free(textSegment);
+}
+
+static void rotate_left(char *path, int n, int size)
 {
     int fd = open(path, O_RDWR);
 
@@ -211,5 +229,4 @@ int rotate_left(char *path, int n, int size)
     close(fd);
     free(prefix);
     free(buf);
-    return 0;
 }
