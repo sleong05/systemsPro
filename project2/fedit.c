@@ -47,6 +47,9 @@ enum action
     expand,
     contract
 };
+
+int rotate_left(char *path, int n, int size);
+
 int main(int argc, char *argv[])
 {
     int opt, nargs;
@@ -127,34 +130,22 @@ int main(int argc, char *argv[])
 
     // general needed info
     char *fileName = argv[optind];
-    bool exitStatus = 1;
-    char *line = NULL;
-    size_t bufferLength = 0;
-    size_t lineLength = 0;
 
     // path to filename in directory
     char path[100];
     strcpy(path, "./");
     strcat(path, fileName);
-    FILE *fh;
 
     // get size of file
     struct stat st;
     stat(path, &st);
     int size = st.st_size;
-    // fh = fopen(path, "r");
-
-    // if (fh == NULL)
-    // {
-    //     fprintf(stderr, "No such file\n");
-    //     return 1;
-    // }
-
-    // actions
     int dsize;
+
     switch (operation)
     {
     case rLeft:
+        rotate_left(path, mainArg, size);
         break;
     case rRight:
         break;
@@ -162,7 +153,6 @@ int main(int argc, char *argv[])
         break;
     case expand:
     {
-        printf("expand\n");
         dsize = size + mainArg;
         if (truncate(path, dsize) == -1)
         {
@@ -200,5 +190,28 @@ int main(int argc, char *argv[])
     default:
         break;
     }
+    return 0;
+}
+
+int rotate_left(char *path, int n, int size)
+{
+    int fd = open(path, O_RDWR);
+
+    n %= size;
+
+    char *prefix = malloc(n);
+    char *buf = malloc(size);
+
+    pread(fd, prefix, n, 0);
+    pread(fd, buf, size - n, n);
+
+    memcpy(buf + (size - n), prefix, n);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, buf, size);
+
+    close(fd);
+    free(prefix);
+    free(buf);
     return 0;
 }
