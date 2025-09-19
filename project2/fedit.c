@@ -52,6 +52,8 @@ enum action
 
 static void rotate_left(char *path, int n, int size);
 static void keepBytes(char *path, int start, int bytesToKeep, int size);
+static void rotate_right(char *path, int n, int size);
+
 int main(int argc, char *argv[])
 {
     int opt, nargs;
@@ -145,6 +147,7 @@ int main(int argc, char *argv[])
         rotate_left(path, mainArg, size);
         break;
     case rRight:
+        rotate_right(path, mainArg, size);
         break;
     case keep:
         keepBytes(path, offSet, mainArg, size);
@@ -228,5 +231,27 @@ static void rotate_left(char *path, int n, int size)
 
     close(fd);
     free(prefix);
+    free(buf);
+}
+
+static void rotate_right(char *path, int n, int size)
+{
+    int fd = open(path, O_RDWR);
+
+    n %= size;
+
+    char *postfix = malloc(size);
+    char *buf = malloc(size-n);
+
+    pread(fd, postfix, n, size-n);
+    pread(fd, buf, size-n, 0);
+
+    memcpy(postfix + n, buf, size-n);
+
+    lseek(fd, 0, SEEK_SET);
+    write(fd, postfix, size);
+
+    close(fd);
+    free(postfix);
     free(buf);
 }
