@@ -54,11 +54,12 @@ enum action
 static void rotate_left(char *path, int n, int size);
 static void keepBytes(char *path, int start, int bytesToKeep, int size);
 static void rotate_right(char *path, int n, int size);
+static void repeatKeepBytes(char *path, int offSet, int bytesToKeep, int size);
 
 int main(int argc, char *argv[])
 {
     int opt, nargs;
-    const char *short_opts = ":hl:r:x:c:v:k:s:";
+    const char *short_opts = ":hl:r:x:c:v:k:s:m";
     struct option long_opts[] = {
         {"help", no_argument, NULL, 'h'},
         {"rotate-left", required_argument, NULL, 'l'},
@@ -68,6 +69,7 @@ int main(int argc, char *argv[])
         {"value", required_argument, NULL, 'v'},
         {"keep", required_argument, NULL, 'k'},
         {"skip", required_argument, NULL, 's'},
+        {"repeat", no_argument, NULL, 'm'},
         {NULL, 0, NULL, 0}};
 
     // flags
@@ -76,6 +78,7 @@ int main(int argc, char *argv[])
 
     char expansionChar = 'A';
     int offSet = 0;
+    bool repeat = false;
     // parsing args
     while (1)
     {
@@ -83,15 +86,17 @@ int main(int argc, char *argv[])
         if (opt == -1)
             break;
         // ensure one main op is selected
-        if (operation != NOACTION) {
-            switch (opt) {
-                case 'l':
-                case 'r':
-                case 'x':
-                case 'c':
-                case 'k':
-                    fprintf(stderr, "Only one main flag may be selected\n");
-                    return 1;
+        if (operation != NOACTION)
+        {
+            switch (opt)
+            {
+            case 'l':
+            case 'r':
+            case 'x':
+            case 'c':
+            case 'k':
+                fprintf(stderr, "Only one main flag may be selected\n");
+                return 1;
             }
         }
         switch (opt)
@@ -102,6 +107,11 @@ int main(int argc, char *argv[])
         case 'l':
             operation = rLeft;
             mainArg = atoi(optarg);
+            if (mainArg < 0)
+            {
+                fprintf(stderr, "Cannot rotate negatively. Use rotate right instead. \n");
+                return 1;
+            }
             break;
         case 'r':
             operation = rRight;
@@ -125,7 +135,12 @@ int main(int argc, char *argv[])
         case 's':
             offSet = atoi(optarg);
             break;
-        case '?': /* ... unknown option */
+        case 'm':
+            repeat = true;
+            break;
+        case '?':
+            fprintf(stderr, "Unknown Arg\n");
+            return 1;
         case ':': /* ... option missing required argument */
         default:
             /* ... unexpected; here for completeness */
@@ -147,6 +162,14 @@ int main(int argc, char *argv[])
     strcpy(path, "./");
     strcat(path, fileName);
 
+    // test if file exists
+    FILE *fp = fopen(path, "r");
+    if (fp == NULL)
+    {
+        fprintf(stderr, "Invalide path %s\n", fileName);
+        return 1;
+    }
+    fclose(fp);
     // get size of file
     struct stat st;
     stat(path, &st);
@@ -162,7 +185,14 @@ int main(int argc, char *argv[])
         rotate_right(path, mainArg, size);
         break;
     case keep:
-        keepBytes(path, offSet, mainArg, size);
+        if (repeat)
+        {
+            repeatKeepBytes(path, offSet, mainArg, size);
+        }
+        else
+        {
+            keepBytes(path, offSet, mainArg, size);
+        }
         break;
     case expand:
     {
@@ -192,16 +222,54 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-static void keepBytes(char *path, int start, int bytesToKeep, int size) {
-    if (start >= size) return;
+static void repeatKeepBytes(char *path, int offSet, int bytesToKeep, int size)
+{
+    if (offSet >= size)
+    {
+        FILE *fp = fopen(path, "w");
+        fclose(fp);
+        return;
+    }
+
+    int fd = open(path, O_RDWR);
+    int position = 0;
+    char *buf = malloc(size);
+    char *textSegment = malloc(bytesToKeep);
+    int iterations = 0;
+
+    while (position < size)
+    {
+        position += offSet;
+        int bytesRead = pread(fd, textSegment, bytesToKeep, position);
+        position += bytesToKeep;
+
+        memcpy(buf + (iterations * bytesToKeep), textSegment, bytesRead);
+        iterations++;
+    }
+    write(fd, buf, strlen(buf));
+    ftruncate(fd, strlen(buf));
+
+    close(fd);
+    free(buf);
+    free(textSegment);
+}
+
+static void keepBytes(char *path, int start, int bytesToKeep, int size)
+{
+    if (start >= size)
+    {
+        FILE *fp = fopen(path, "w");
+        fclose(fp);
+        return;
+    }
 
     int fd = open(path, O_RDWR);
 
-    int end = MIN(bytesToKeep+ start, size);
+    int end = MIN(bytesToKeep + start, size);
 
     int length = end - start;
     char *textSegment = malloc(length);
-    pread(fd, textSegment, length, start );
+    pread(fd, textSegment, length, start);
 
     write(fd, textSegment, length);
     ftruncate(fd, length);
@@ -239,12 +307,12 @@ static void rotate_right(char *path, int n, int size)
     n %= size;
 
     char *postfix = malloc(size);
-    char *buf = malloc(size-n);
+    char *buf = malloc(size - n);
 
-    pread(fd, postfix, n, size-n);
-    pread(fd, buf, size-n, 0);
+    pread(fd, postfix, n, size - n);
+    pread(fd, buf, size - n, 0);
 
-    memcpy(postfix + n, buf, size-n);
+    memcpy(postfix + n, buf, size - n);
 
     lseek(fd, 0, SEEK_SET);
     write(fd, postfix, size);
